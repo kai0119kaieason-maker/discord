@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DISCORD SERVER // HUB</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,700;0,800;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'monospace'],
+                        tech: ['Share Tech Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #000000;
+            color: #ffffff;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* CRT Scanlines Overlay */
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), linear-gradient(90deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.01), rgba(255, 255, 255, 0.03));
+            z-index: 25;
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Loader Overlay */
+        #loader {
+            position: fixed;
+            inset: 0;
+            background-color: #000000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+
+        /* Spinner Ring */
+        .cyber-spinner {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 2px solid #ffffff;
+            border-right: 2px solid #ffffff;
+            animation: spin 1s linear infinite;
+        }
+
+        .cyber-spinner-inner {
+            position: absolute;
+            inset: 12px;
+            border-radius: 50%;
+            border: 1px dashed rgba(255, 255, 255, 0.4);
+            border-bottom: 2px solid #ffffff;
+            animation: spin-reverse 1.5s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes spin-reverse {
+            0% { transform: rotate(360deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        /* HUD Corners */
+        .hud-corners {
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(5, 5, 5, 0.75);
+            backdrop-filter: blur(16px);
+        }
+
+        .hud-corners::before, .hud-corners::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-color: #ffffff;
+            pointer-events: none;
+        }
+
+        .hud-corners::before {
+            top: -1px; left: -1px;
+            border-top: 2px solid;
+            border-left: 2px solid;
+        }
+
+        .hud-corners::after {
+            bottom: -1px; right: -1px;
+            border-bottom: 2px solid;
+            border-right: 2px solid;
+        }
+
+        /* Futuristic Glitch CTA Button */
+        .cyber-btn {
+            position: relative;
+            background: #ffffff;
+            color: #000000;
+            font-weight: 800;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.25);
+        }
+
+        .cyber-btn:hover {
+            background: #ffffff;
+            color: #000000;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.8), 0 0 80px rgba(255, 255, 255, 0.4);
+            transform: scale(1.02);
+            letter-spacing: 0.15em;
+        }
+
+        /* Text Glitch Effect */
+        .glow-title {
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.6), 0 0 40px rgba(255, 255, 255, 0.2);
+        }
+
+        .glow-subtitle {
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body class="scanlines relative flex flex-col justify-between">
+
+    <!-- Canvas for Code Rain & Particle Mesh -->
+    <canvas id="bg-canvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- 1. HIGH-TECH LOADING SCREEN -->
+    <div id="loader">
+        <div class="relative flex items-center justify-center mb-8">
+            <div class="cyber-spinner">
+                <div class="cyber-spinner-inner"></div>
+            </div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span id="loader-percent" class="font-tech text-2xl font-bold tracking-widest text-white">0%</span>
+            </div>
+        </div>
+
+        <div class="w-64 sm:w-80 h-1.5 bg-zinc-900 border border-white/20 p-0.5 mb-4">
+            <div id="loader-bar" class="h-full bg-white w-0 transition-all duration-100 ease-out shadow-[0_0_10px_#fff]"></div>
+        </div>
+
+        <div id="loader-status" class="font-tech text-xs tracking-widest text-zinc-400 uppercase h-4 flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-white animate-ping"></span>
+            <span id="status-text">SYSTEM INIT...</span>
+        </div>
+    </div>
+
+    <!-- Top Status Bar -->
+    <header class="relative z-20 border-b border-white/10 bg-black/60 backdrop-blur-md py-2.5 px-4 sm:px-8 flex justify-between items-center text-xs font-tech">
+        <div class="flex items-center gap-3">
+            <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+            <span class="text-zinc-300 tracking-wider">PROTOCOL // DISCORD_SERVER</span>
+        </div>
+        <div class="hidden sm:flex items-center gap-6 text-zinc-400 tracking-widest">
+            <span>PING: <span id="ping" class="text-white">14</span>ms</span>
+            <span>SECURE: AES-256</span>
+            <span>NODES: 1,420 ONLINE</span>
+        </div>
+    </header>
+
+    <!-- 2. MAIN HERO SECTION (Single Viewport Only) -->
+    <main class="relative z-20 flex-1 flex flex-col items-center justify-center px-4 text-center">
+        <div class="hud-corners p-8 sm:p-12 md:p-16 max-w-3xl w-full mx-auto flex flex-col items-center">
+            
+            <!-- Tag Badge -->
+            <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-white/30 text-[11px] font-tech tracking-widest uppercase mb-6 text-zinc-200">
+                <i class="fa-solid fa-microchip text-xs"></i> CENTRAL GATEWAY
+            </div>
+
+            <!-- Server Main Title -->
+            <h1 class="glow-title font-mono font-black text-3xl sm:text-5xl md:text-6xl tracking-tight uppercase text-white mb-2 leading-none">
+                DISCORD SERVER
+            </h1>
+
+            <!-- Subtitle HUB -->
+            <div class="glow-subtitle font-mono text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-[0.35em] text-white uppercase mt-2 mb-8 border-b-2 border-white/80 pb-2">
+                HUB
+            </div>
+
+            <p class="text-xs sm:text-sm text-zinc-400 max-w-lg font-tech tracking-wider mb-8 leading-relaxed">
+                ACCESS POINT FOR THE HIGH-TECH MONOCHROME COMMUNITY. INTEGRATED VOICE NODES, DEV CHANNELS & AUTOMATED SYSTEMS.
+            </p>
+
+            <!-- Direct CTA Join Button -->
+            <a href="https://discord.gg/2Cwzek7CNm" target="_blank" rel="noopener noreferrer" 
+               class="cyber-btn px-8 sm:px-10 py-4 text-sm sm:text-base font-mono uppercase tracking-widest flex items-center justify-center gap-3 w-full sm:w-auto">
+                <i class="fa-brands fa-discord text-xl"></i>
+                <span>JOIN DISCORD SERVER</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-20 border-t border-white/10 bg-black/60 backdrop-blur-md py-3 px-4 text-center text-[10px] font-tech text-zinc-500 tracking-widest flex justify-between items-center max-w-full">
+        <span>© <span id="year"></span> DISCORD SERVER HUB</span>
+        <span class="hover:text-white transition">https://discord.gg/2Cwzek7CNm</span>
+    </footer>
+
+    <!-- Canvas Logic & Loader Script -->
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Randomize Ping
+        setInterval(() => {
+            const pingEl = document.getElementById('ping');
+            if (pingEl) pingEl.textContent = Math.floor(Math.random() * 5) + 12;
+        }, 2000);
+
+        // 1. LOADING SCREEN ANIMATION LOGIC
+        const statusLogs = [
+            "INITIALIZING MATRIX SYSTEM...",
+            "CONNECTING PROTOCOL NODES...",
+            "LOADING NEURAL LINK...",
+            "ENCRYPTING STREAM PORT...",
+            "SYNCHRONIZING ACCESS POINT...",
+            "SYSTEM READY."
+        ];
+
+        let progress = 0;
+        const loaderPercent = document.getElementById('loader-percent');
+        const loaderBar = document.getElementById('loader-bar');
+        const statusText = document.getElementById('status-text');
+        const loader = document.getElementById('loader');
+
+        const loadInterval = setInterval(() => {
+            progress += Math.floor(Math.random() * 8) + 3;
+            if (progress > 100) progress = 100;
+
+            loaderPercent.textContent = `${progress}%`;
+            loaderBar.style.width = `${progress}%`;
+
+            const logIndex = Math.min(Math.floor((progress / 100) * statusLogs.length), statusLogs.length - 1);
+            statusText.textContent = statusLogs[logIndex];
+
+            if (progress >= 100) {
+                clearInterval(loadInterval);
+                setTimeout(() => {
+                    loader.style.opacity = '0';
+                    loader.style.visibility = 'hidden';
+                }, 400);
+            }
+        }, 70);
+
+        // 2. ULTRA-FUTURISTIC CANVAS (Code Rain + Dynamic Mesh)
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let columns = [];
+        const fontSize = 14;
+        const chars = '0123456789ABCDEF<>{}[]=/\\+*#$@%&_XYZ';
+
+        // Mouse Position for Interactive Grid
+        let mouse = { x: null, y: null, radius: 150 };
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        function initCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            
+            const colCount = Math.floor(width / fontSize);
+            columns = [];
+            for (let i = 0; i < colCount; i++) {
+                columns.push({
+                    x: i * fontSize,
+                    y: Math.random() * -height,
+                    speed: Math.random() * 3 + 2
+                });
+            }
+        }
+
+        function drawBackground() {
+            // Fade effect for code trails
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+
+            // Draw Code Rain
+            for (let i = 0; i < columns.length; i++) {
+                const col = columns[i];
+                const char = chars[Math.floor(Math.random() * chars.length)];
+
+                // Lead character brightness
+                if (Math.random() > 0.88) {
+                    ctx.fillStyle = '#ffffff';
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+                }
+
+                ctx.fillText(char, col.x, col.y);
+
+                if (col.y > height && Math.random() > 0.975) {
+                    col.y = Math.random() * -100;
+                }
+                col.y += col.speed * fontSize * 0.7;
+
+                // Mouse interaction glow ring
+                if (mouse.x && mouse.y) {
+                    const dx = col.x - mouse.x;
+                    const dy = col.y - mouse.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < mouse.radius) {
+                        ctx.fillStyle = `rgba(255, 255, 255, ${1 - dist / mouse.radius})`;
+                        ctx.fillText(char, col.x, col.y);
+                    }
+                }
+            }
+
+            requestAnimationFrame(drawBackground);
+        }
+
+        window.addEventListener('resize', initCanvas);
+        
+        window.onload = () => {
+            initCanvas();
+            drawBackground();
+        };
+    </script>
+</body>
+</html>
